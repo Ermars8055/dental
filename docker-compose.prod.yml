@@ -75,10 +75,14 @@ services:
       FRONTEND_URL: ${FRONTEND_URL}
       BACKEND_URL: ${BACKEND_URL}
       LOG_LEVEL: info
-    ports:
-      - "127.0.0.1:9020:5001"
+    # No host port — backend is only reachable inside the Docker network
+    # Host nginx reaches it via the dedicated localhost port below
     expose:
       - "5001"
+    # Localhost-only port so host nginx can proxy /api/ to it
+    # Not public — firewall blocks direct access
+    ports:
+      - "127.0.0.1:9020:5001"
     networks:
       - dental_net_prod
     healthcheck:
@@ -102,12 +106,13 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    # Only frontend is exposed — bound to localhost so only host nginx can reach it
     ports:
-      - "127.0.0.1:9021:80"
+      - "127.0.0.1:9021:3000"
     networks:
       - dental_net_prod
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

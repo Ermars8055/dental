@@ -8,21 +8,15 @@ RUN npm install
 
 COPY . .
 
-# Build production bundle (no HTTPS/proxy needed at build time)
 RUN npm run build
 
-# Stage 2 — Serve with nginx
-FROM nginx:alpine
+# Stage 2 — Serve static files with lightweight 'serve'
+FROM node:20-alpine
 
-# Remove default nginx config
-RUN rm /etc/nginx/conf.d/default.conf
+RUN npm install -g serve
 
-# Copy our nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /app/dist
 
-# Copy built assets
-COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 3000
 
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["serve", "-s", "/app/dist", "-l", "3000"]
