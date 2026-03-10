@@ -1,0 +1,34 @@
+# ── Environment / secrets ──────────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.production.example
+Backend-Main/.env
+Backend-Main/.env.*
+!Backend-Main/.env.example
+
+# ── Node modules ───────────────────────────────────────────────────
+node_modules/
+Backend-Main/node_modules/
+Frontend-Main/node_modules/
+
+# ── Build output ───────────────────────────────────────────────────
+Frontend-Main/dist/
+Frontend-Main/.vite/
+Backend-Main/dist/
+
+# ── Logs ───────────────────────────────────────────────────────────
+*.log
+Backend-Main/backend.log
+logs/
+
+# ── SSL certs (local dev only) ─────────────────────────────────────
+Frontend-Main/localhost.pem
+Frontend-Main/localhost-key.pem
+Frontend-Main/ca.crt
+Frontend-Main/ca.key
+
+# ── OS / editor ────────────────────────────────────────────────────
+.DS_Store
+.vscode/
+*.swp

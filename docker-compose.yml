@@ -1,0 +1,98 @@
+services:
+
+  # ─── PostgreSQL ───────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: dental_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dental_clinic
+      POSTGRES_USER: dental_user
+      POSTGRES_PASSWORD: dental_pass
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./Backend-Main/migrations/001_create_initial_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql
+      - ./Backend-Main/migrations/002_add_email_verification.sql:/docker-entrypoint-initdb.d/002_email_verification.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dental_user -d dental_clinic"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dental_net
+
+  # ─── Redis (for Bull job queues) ──────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: dental_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dental_net
+
+  # ─── Backend ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./Backend-Main
+      dockerfile: Dockerfile
+    container_name: dental_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      DATABASE_URL: postgresql://dental_user:dental_pass@db:5432/dental_clinic
+      DATABASE_SSL: "false"
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change_this_in_production_use_a_long_random_string}
+      JWT_EXPIRE: 7d
+      CORS_ORIGIN: http://localhost:3000
+      MAILJET_API_KEY: ${MAILJET_API_KEY}
+      MAILJET_SECRET_KEY: ${MAILJET_SECRET_KEY}
+      MAILJET_FROM_EMAIL: ${MAILJET_FROM_EMAIL}
+      MAILJET_FROM_NAME: ${MAILJET_FROM_NAME:-Dental Clinic}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:3000}
+      LOG_LEVEL: info
+    expose:
+      - "5001"
+    networks:
+      - dental_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ─── Frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./Frontend-Main
+      dockerfile: Dockerfile
+    container_name: dental_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - dental_net
+
+volumes:
+  db_data:
+
+networks:
+  dental_net:
+    driver: bridge
