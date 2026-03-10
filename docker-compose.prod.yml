@@ -1,0 +1,126 @@
+services:
+
+  # ─── PostgreSQL ───────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: dental_db_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-dental_clinic}
+      POSTGRES_USER: ${DB_USER:-dental_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - dental_db_data:/var/lib/postgresql/data
+      - ./Backend-Main/migrations/001_create_initial_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql
+      - ./Backend-Main/migrations/002_add_email_verification.sql:/docker-entrypoint-initdb.d/002_email_verification.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dental_user} -d ${DB_NAME:-dental_clinic}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - dental_net_prod
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ─── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: dental_redis_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - dental_net_prod
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # ─── Backend ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./Backend-Main
+      dockerfile: Dockerfile
+    container_name: dental_backend_prod
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      DATABASE_URL: postgresql://${DB_USER:-dental_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-dental_clinic}
+      DATABASE_SSL: "false"
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE: 7d
+      CORS_ORIGIN: ${FRONTEND_URL}
+      MAILJET_API_KEY: ${MAILJET_API_KEY}
+      MAILJET_SECRET_KEY: ${MAILJET_SECRET_KEY}
+      MAILJET_FROM_EMAIL: ${MAILJET_FROM_EMAIL}
+      MAILJET_FROM_NAME: ${MAILJET_FROM_NAME:-Dental Clinic}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      FRONTEND_URL: ${FRONTEND_URL}
+      BACKEND_URL: ${BACKEND_URL}
+      LOG_LEVEL: info
+    ports:
+      - "127.0.0.1:9020:5001"
+    expose:
+      - "5001"
+    networks:
+      - dental_net_prod
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ─── Frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./Frontend-Main
+      dockerfile: Dockerfile
+    container_name: dental_frontend_prod
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:9021:80"
+    networks:
+      - dental_net_prod
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+volumes:
+  dental_db_data:
+    driver: local
+
+networks:
+  dental_net_prod:
+    driver: bridge
