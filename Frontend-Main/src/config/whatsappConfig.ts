@@ -11,7 +11,7 @@ export const WHATSAPP_CONFIG = {
 
   // Clinic information (customize as needed)
   clinicName: 'Dental Clinic',
-  clinicPhone: '+91-XXXXXXXXXX',
+  clinicPhone: '+91 75024 10307',
 
   // Message template with placeholders
   messageTemplate: `Hi {patientName}, your appointment at {clinicName} has been confirmed!

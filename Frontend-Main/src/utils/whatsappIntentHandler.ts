@@ -35,7 +35,7 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
  * Compose message by replacing template placeholders
  */
 export function composeMessage(data: WhatsAppMessageData): string {
-  let message = WHATSAPP_CONFIG.messageTemplate;
+  let message: string = WHATSAPP_CONFIG.messageTemplate as string;
 
   message = message.replace('{patientName}', data.patientName);
   message = message.replace('{clinicName}', WHATSAPP_CONFIG.clinicName);
@@ -50,19 +50,11 @@ export function composeMessage(data: WhatsAppMessageData): string {
 
 /**
  * Check if WhatsApp is likely available on this device/browser
- * Returns boolean - does not guarantee availability
+ * wa.me links work on any browser — desktop opens WhatsApp Web, mobile opens the app
  */
 export function isWhatsAppLikelyAvailable(): boolean {
-  // Check if WhatsApp Web URL scheme is supported
-  const isWeb = typeof window !== 'undefined' && window.location.protocol === 'https:';
-
-  // Check if likely mobile with native WhatsApp
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    typeof navigator !== 'undefined' ? navigator.userAgent : ''
-  );
-
-  // WhatsApp available on HTTPS web or mobile with app
-  return isWeb || isMobile;
+  // wa.me works on any modern browser (http or https), desktop or mobile
+  return typeof window !== 'undefined';
 }
 
 /**

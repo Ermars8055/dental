@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { buildWhatsAppUrl, composeMessage, isWhatsAppLikelyAvailable, isValidPhoneFormat } from '../utils/whatsappIntentHandler';
 import { WHATSAPP_CONFIG } from '../config/whatsappConfig';
@@ -11,6 +11,7 @@ interface Patient {
 
 interface Appointment {
   scheduled_time: string;
+  treatment_name?: string;
   treatments?: {
     name: string;
   };
@@ -56,7 +57,7 @@ export function WhatsAppNotificationModal({
     minute: '2-digit',
     hour12: true,
   });
-  const treatmentType = appointment.treatments?.name || 'Appointment';
+  const treatmentType = appointment.treatment_name || appointment.treatments?.name || 'Appointment';
   const duration = 30; // Default duration, could be extended to appointment.duration
 
   // Compose message
