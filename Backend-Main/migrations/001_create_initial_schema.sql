@@ -91,7 +91,8 @@ CREATE INDEX idx_appointments_patient_id ON appointments(patient_id);
 CREATE INDEX idx_appointments_scheduled_time ON appointments(scheduled_time);
 CREATE INDEX idx_appointments_status ON appointments(status);
 CREATE INDEX idx_appointments_created_at ON appointments(created_at);
-CREATE INDEX idx_appointments_date ON appointments(DATE(scheduled_time));
+-- Note: DATE() on timestamptz is not immutable; the idx_appointments_scheduled_time index above covers date-range queries
+-- CREATE INDEX idx_appointments_date ON appointments(DATE(scheduled_time));
 
 -- ============================================
 -- 5. Appointment Reminders
@@ -266,31 +267,6 @@ CREATE TABLE clinic_settings (
 );
 
 -- ============================================
--- Row Level Security (RLS) Policies
--- ============================================
-
--- Enable RLS on tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_transactions ENABLE ROW LEVEL SECURITY;
-
--- Users can view their own profile
-CREATE POLICY "Users can view their own profile" ON users
-  FOR SELECT USING (auth.uid()::text = id::text OR auth.jwt() ->> 'role' = 'admin');
-
--- Patients can be viewed by authenticated users
-CREATE POLICY "Authenticated users can view patients" ON patients
-  FOR SELECT USING (auth.role() = 'authenticated');
-
--- Appointments can be viewed by authenticated users
-CREATE POLICY "Authenticated users can view appointments" ON appointments
-  FOR SELECT USING (auth.role() = 'authenticated');
-
--- ============================================
 -- Views for Common Queries
 -- ============================================
 
@@ -388,11 +364,4 @@ CREATE TRIGGER update_clinic_settings_updated_at BEFORE UPDATE ON clinic_setting
 CREATE TRIGGER update_appointment_reminders_updated_at BEFORE UPDATE ON appointment_reminders
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ============================================
--- Grant Permissions
--- ============================================
-
--- Grant access to authenticated users
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+-- (Supabase RLS policies and role grants removed — not needed for standalone Postgres)
